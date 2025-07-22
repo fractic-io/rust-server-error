@@ -11,3 +11,6 @@ define_critical_error!(MultithreadingError, "Error executing child threads.");
 
 // Math errors:
 define_critical_error!(DivisionByZeroError, "Division by zero.");
+
+// Generic initialization errors:
+define_critical_error!(InitError, "Initialization failed: {details}.", { details: &str });
