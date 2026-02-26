@@ -14,3 +14,6 @@ define_critical_error!(DivisionByZeroError, "Division by zero.");
 
 // Generic initialization errors:
 define_critical_error!(InitError, "Initialization failed: {details}.", { details: &str });
+
+// Logic is not implemented:
+define_critical_error!(NotImplementedError, "Logic is not yet implemented.");
