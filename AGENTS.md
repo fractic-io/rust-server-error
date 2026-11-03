@@ -16,4 +16,3 @@ context capture), `standard_errors.rs` (`CriticalError`,
   `fractic-cli-scaffolding` (`CliError` wraps these) and the AWS wrappers.
 - New entries in `standard_errors.rs` only when truly generic; domain errors
   belong in the crate that raises them.
-- Commit / PR titles: imperative, trailing period.
