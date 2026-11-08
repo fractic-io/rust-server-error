@@ -16,14 +16,22 @@ macro_rules! define_server_error {
         }
 
         impl $name {
+            /// Stable grouping key: `module_path!()::TypeName`.
             #[allow(dead_code)]
+            pub const FINGERPRINT: &str = concat!(module_path!(), "::", stringify!($name));
+
+            #[allow(dead_code)]
+            #[allow(clippy::new_ret_no_self)]
             #[track_caller]
             pub fn new($($arg: $argtype),*) -> $crate::ServerError {
-                Box::new($name {
+                let location = ::std::panic::Location::caller();
+                let error = $name {
                     context: $context_type.capture(),
                     message: format!($msg, $($arg = $arg),*),
                     debug: None,
-                })
+                };
+                $crate::__report(Self::FINGERPRINT, $msg, location, &error);
+                Box::new(error)
             }
 
             #[allow(dead_code)]
@@ -32,11 +40,14 @@ macro_rules! define_server_error {
                 $($arg: $argtype,)*
                 debug: &D,
             ) -> $crate::ServerError where D: std::fmt::Debug {
-                Box::new($name {
+                let location = ::std::panic::Location::caller();
+                let error = $name {
                     context: $context_type.capture(),
                     message: format!($msg, $($arg = $arg),*),
                     debug: Some(format!("{:?}", debug)),
-                })
+                };
+                $crate::__report(Self::FINGERPRINT, $msg, location, &error);
+                Box::new(error)
             }
         }
 
