@@ -21,8 +21,10 @@ use crate::{ServerErrorBehaviour, ServerErrorTag, ServerErrorTrait};
 // Definitions.
 // ----------------------------------------------------------------------------
 
-/// What the sink sees. Borrowed from the error being built; copy out what
-/// must outlive the call (`ErrorRecord::from_event` does).
+/// What the sink sees: the parts of the error being built, borrowed; copy
+/// out what must outlive the call (`ErrorRecord::from_event` does). Plain
+/// fields rather than the error trait object, so the CLI error family of
+/// `fractic-cli-scaffolding` reports through the same sink.
 #[derive(Debug, Clone, Copy)]
 pub struct ErrorEvent<'a> {
     /// `module_path!()::TypeName` of the error struct: the grouping key
@@ -33,10 +35,16 @@ pub struct ErrorEvent<'a> {
     pub kind: ErrorKind,
     /// Where the constructor was called.
     pub location: &'a Location<'a>,
-    pub error: &'a dyn ServerErrorTrait,
+    pub message: &'a str,
+    pub debug: Option<&'a str>,
+    /// The error's captured context: `file; line;`, a backtrace, or
+    /// `OMITTED`.
+    pub context: &'a str,
 }
 
-/// The classification carried by the defining macro.
+/// The classification carried by the defining macro; `Cli` is an error of a
+/// `fractic-cli-scaffolding` CLI's own flows (an aborted prompt, a local I/O
+/// failure), which has no server behaviour.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ErrorKind {
     Critical,
@@ -44,6 +52,7 @@ pub enum ErrorKind {
     Client,
     Sensitive,
     User,
+    Cli,
 }
 
 impl ErrorKind {
@@ -65,6 +74,7 @@ impl ErrorKind {
             Self::Client => "client",
             Self::Sensitive => "sensitive",
             Self::User => "user",
+            Self::Cli => "cli",
         }
     }
 }
@@ -134,21 +144,27 @@ pub fn install_error_sink(sink: ErrorSink) -> bool {
     SINK.set(sink).is_ok()
 }
 
-/// Called by `define_server_error!` constructors. Not for direct use.
+/// Called by the error-defining macros (`define_server_error!` here,
+/// `define_cli_error!` in `fractic-cli-scaffolding`). Not for direct use.
 #[doc(hidden)]
 pub fn __report(
     fingerprint: &str,
     template: &str,
+    kind: ErrorKind,
     location: &Location<'_>,
-    error: &dyn ServerErrorTrait,
+    message: &str,
+    debug: Option<&str>,
+    context: &str,
 ) {
     if let Some(sink) = SINK.get() {
         sink(ErrorEvent {
             fingerprint,
             template,
-            kind: ErrorKind::of(error),
+            kind,
             location,
-            error,
+            message,
+            debug,
+            context,
         });
     }
 }
@@ -156,13 +172,12 @@ pub fn __report(
 impl ErrorRecord {
     pub fn from_event(event: &ErrorEvent<'_>, origin: &ErrorOrigin) -> Self {
         let location = format!("{}:{}", event.location.file(), event.location.line());
-        let context = event.error.context();
         let plain_context = format!("{}; {};", event.location.file(), event.location.line());
-        let backtrace = (context != "OMITTED" && *context != plain_context)
-            .then(|| truncate(context, MAX_BACKTRACE_CHARS));
+        let backtrace = (event.context != "OMITTED" && event.context != plain_context)
+            .then(|| truncate(event.context, MAX_BACKTRACE_CHARS));
         let debug = match event.kind {
             ErrorKind::Sensitive => None,
-            _ => event.error.debug().map(|d| truncate(d, MAX_DEBUG_CHARS)),
+            _ => event.debug.map(|d| truncate(d, MAX_DEBUG_CHARS)),
         };
         Self {
             v: ERROR_RECORD_VERSION,
@@ -174,7 +189,7 @@ impl ErrorRecord {
             kind: event.kind.as_str().to_owned(),
             fingerprint: event.fingerprint.to_owned(),
             template: Some(event.template.to_owned()),
-            message: truncate(event.error.message(), MAX_MESSAGE_CHARS),
+            message: truncate(event.message, MAX_MESSAGE_CHARS),
             debug,
             location: Some(location),
             backtrace,

@@ -30,7 +30,15 @@ macro_rules! define_server_error {
                     message: format!($msg, $($arg = $arg),*),
                     debug: None,
                 };
-                $crate::__report(Self::FINGERPRINT, $msg, location, &error);
+                $crate::__report(
+                    Self::FINGERPRINT,
+                    $msg,
+                    $crate::ErrorKind::of(&error),
+                    location,
+                    &error.message,
+                    error.debug.as_deref(),
+                    &error.context,
+                );
                 Box::new(error)
             }
 
@@ -46,7 +54,15 @@ macro_rules! define_server_error {
                     message: format!($msg, $($arg = $arg),*),
                     debug: Some(format!("{:?}", debug)),
                 };
-                $crate::__report(Self::FINGERPRINT, $msg, location, &error);
+                $crate::__report(
+                    Self::FINGERPRINT,
+                    $msg,
+                    $crate::ErrorKind::of(&error),
+                    location,
+                    &error.message,
+                    error.debug.as_deref(),
+                    &error.context,
+                );
                 Box::new(error)
             }
         }
