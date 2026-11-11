@@ -5,8 +5,7 @@ ServerErrorTrait>` carrying a message, optional debug detail, captured
 context, a behaviour (how an API responds) and a tag. The
 `define_server_error!` / `define_internal_error!` / `define_user_error!` /
 `define_critical_error!` macros generate error structs with `::new(...)` and
-`::with_debug(..., &cause)` constructors. Consumer side:
-`/efs/fractic/_/rust.md` §4 "Errors". Flat library: `src/lib.rs` →
+`::with_debug(..., &cause)` constructors. Flat library: `src/lib.rs` →
 `constants.rs`, `macros.rs`, `server_error.rs` (trait, behaviour, tag,
 context capture), `standard_errors.rs` (`CriticalError`,
 `MultithreadingError`, `InitError`, `NotImplementedError`, …).
