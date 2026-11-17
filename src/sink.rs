@@ -88,9 +88,9 @@ pub struct ErrorOrigin {
     pub source: String,
     /// `sandbox`, `staging` or `production`.
     pub env: Option<String>,
-    /// How the process was started (`interactive`, `harness`, a Lambda's
-    /// function name).
-    pub session: Option<String>,
+    /// The entry point the process runs from (`interactive`, `harness`, a
+    /// Lambda's function name, an app's name).
+    pub entry: Option<String>,
     pub version: Option<String>,
 }
 
@@ -106,7 +106,7 @@ pub struct ErrorRecord {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub env: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub session: Option<String>,
+    pub entry: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
     pub kind: String,
@@ -184,7 +184,7 @@ impl ErrorRecord {
             ts: now_rfc3339(),
             source: origin.source.clone(),
             env: origin.env.clone(),
-            session: origin.session.clone(),
+            entry: origin.entry.clone(),
             version: origin.version.clone(),
             kind: event.kind.as_str().to_owned(),
             fingerprint: event.fingerprint.to_owned(),
@@ -209,7 +209,7 @@ impl ErrorRecord {
             ts: now_rfc3339(),
             source: origin.source.clone(),
             env: origin.env.clone(),
-            session: origin.session.clone(),
+            entry: origin.entry.clone(),
             version: origin.version.clone(),
             kind: ErrorKind::Critical.as_str().to_owned(),
             fingerprint: PANIC_FINGERPRINT.to_owned(),
@@ -297,7 +297,7 @@ mod tests {
         ErrorOrigin {
             source: "test".into(),
             env: Some("sandbox".into()),
-            session: Some("unit".into()),
+            entry: Some("unit".into()),
             version: Some("0.0.0".into()),
         }
     }
