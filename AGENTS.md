@@ -10,8 +10,8 @@ context, a behaviour (how an API responds) and a tag. The
 context capture), `standard_errors.rs` (`CriticalError`,
 `MultithreadingError`, `InitError`, `NotImplementedError`, …).
 
-- A change to the trait or macro signatures is breaking for every crate
-  (mark the PR `↯`) and usually needs follow-up PRs in
-  `fractic-cli-scaffolding` (`CliError` wraps these) and the AWS wrappers.
+- A change to the trait or macro signatures is breaking for every crate and
+  usually needs follow-up PRs in `fractic-cli-scaffolding` (`CliError` wraps
+  these) and the AWS wrappers.
 - New entries in `standard_errors.rs` only when truly generic; domain errors
   belong in the crate that raises them.
