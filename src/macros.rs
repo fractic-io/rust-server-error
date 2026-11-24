@@ -17,6 +17,10 @@ macro_rules! define_server_error {
 
         impl $name {
             #[allow(dead_code)]
+            #[allow(
+                clippy::new_ret_no_self,
+                reason = "callers rely on `new` returning the boxed `ServerError`"
+            )]
             #[track_caller]
             pub fn new($($arg: $argtype),*) -> $crate::ServerError {
                 Box::new($name {
