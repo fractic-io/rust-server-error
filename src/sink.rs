@@ -109,6 +109,10 @@ pub struct ErrorRecord {
     pub entry: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
+    /// The request the error occurred in, such as a Lambda's request id. The
+    /// sink of a process that serves requests sets it on each record.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub request: Option<String>,
     pub kind: String,
     pub fingerprint: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -186,6 +190,7 @@ impl ErrorRecord {
             env: origin.env.clone(),
             entry: origin.entry.clone(),
             version: origin.version.clone(),
+            request: None,
             kind: event.kind.as_str().to_owned(),
             fingerprint: event.fingerprint.to_owned(),
             template: Some(event.template.to_owned()),
@@ -211,6 +216,7 @@ impl ErrorRecord {
             env: origin.env.clone(),
             entry: origin.entry.clone(),
             version: origin.version.clone(),
+            request: None,
             kind: ErrorKind::Critical.as_str().to_owned(),
             fingerprint: PANIC_FINGERPRINT.to_owned(),
             template: None,
@@ -407,5 +413,15 @@ mod tests {
     fn truncation_respects_char_boundaries() {
         assert_eq!(truncate("héllo", 10), "héllo");
         assert_eq!(truncate("héllo", 2), "hé…");
+    }
+
+    #[test]
+    fn the_request_key_is_written_only_when_set() {
+        let seen = seen();
+        let _e = SinkUser::new();
+        let mut record = find(&seen, "::SinkUser");
+        assert!(!record.to_json_line().contains(r#""request""#));
+        record.request = Some("req-1".into());
+        assert!(record.to_json_line().contains(r#""request":"req-1""#));
     }
 }
