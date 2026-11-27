@@ -42,9 +42,9 @@ pub struct ErrorEvent<'a> {
     pub context: &'a str,
 }
 
-/// The classification carried by the defining macro; `Cli` is an error of a
-/// `fractic-cli-scaffolding` CLI's own flows (an aborted prompt, a local I/O
-/// failure), which has no server behaviour.
+/// The classification carried by the defining macro; `Cli` is a failure in
+/// a `fractic-cli-scaffolding` CLI's own flows (a local I/O error, a prompt
+/// that could not run), which has no server behaviour.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ErrorKind {
     Critical,
@@ -84,7 +84,7 @@ pub type ErrorSink = Box<dyn Fn(ErrorEvent<'_>) + Send + Sync + 'static>;
 /// Where records come from: the same for every record of a process.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ErrorOrigin {
-    /// The product and component (`storyengine-cli`, `app-backend`).
+    /// The product and component (`my-cli`, `my-api`).
     pub source: String,
     /// `sandbox`, `staging` or `production`.
     pub env: Option<String>,

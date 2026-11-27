@@ -10,8 +10,7 @@ context, a behaviour (how an API responds) and a tag. The
 context capture), `standard_errors.rs` (`CriticalError`,
 `MultithreadingError`, `InitError`, `NotImplementedError`, …), `sink.rs`
 (the process-wide error sink every constructor reports to, `ErrorKind`, and
-`ErrorRecord`, the JSON envelope every Fractic source logs for the nightly error
-triage).
+`ErrorRecord`, the JSON envelope a sink writes, one line per error).
 
 - A change to the trait or macro signatures is breaking for every crate and
   usually needs follow-up PRs in `fractic-cli-scaffolding` (`CliError` wraps
@@ -21,7 +20,6 @@ triage).
 - Binaries install the sink (`install_error_sink`), libraries never do. Code
   that runs inside a sink must not construct a `ServerError`: the constructor
   would call the sink again.
-- A new `ErrorRecord` field is read by the triage gate
-  (`~/.rtr/routines/error-triage/triage.py`) and written by the app's
-  `ErrorLogger`; keep the three in step and bump `ERROR_RECORD_VERSION` when a
-  key changes meaning.
+- `ErrorRecord`'s keys are a wire format that readers and writers outside
+  Rust share: add keys rather than rename them, and bump
+  `ERROR_RECORD_VERSION` when a key changes meaning.
