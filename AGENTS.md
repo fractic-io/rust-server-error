@@ -10,7 +10,8 @@ context, a behaviour (how an API responds) and a tag. The
 context capture), `standard_errors.rs` (`CriticalError`,
 `MultithreadingError`, `InitError`, `NotImplementedError`, …), `sink.rs`
 (the process-wide error sink every constructor reports to, `ErrorKind`, and
-`ErrorRecord`, the JSON envelope a sink writes, one line per error).
+`ErrorRecord`, the JSON envelope a sink writes: one line per error, and one
+more, `from_response`, when an error ends a request).
 
 - A change to the trait or macro signatures is breaking for every crate and
   usually needs follow-up PRs in `fractic-cli-scaffolding` (`CliError` wraps
