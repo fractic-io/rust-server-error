@@ -109,17 +109,11 @@ pub struct ErrorRecord {
     pub entry: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
-    /// The request the error occurred in (a Lambda's request id), set by a
-    /// sink that serves requests.
+    /// The request the error occurred in, such as a Lambda's request id. The
+    /// sink of a process that serves requests sets it on each record.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub request: Option<String>,
     pub kind: String,
-    /// The HTTP status a request was answered with, on the record a server
-    /// writes when an error ends the request (`from_response`). That error
-    /// was already recorded when it was constructed: count this record as
-    /// how a request ended, not as another occurrence.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub response: Option<u16>,
     pub fingerprint: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub template: Option<String>,
@@ -198,7 +192,6 @@ impl ErrorRecord {
             version: origin.version.clone(),
             request: None,
             kind: event.kind.as_str().to_owned(),
-            response: None,
             fingerprint: event.fingerprint.to_owned(),
             template: Some(event.template.to_owned()),
             message: truncate(event.message, MAX_MESSAGE_CHARS),
@@ -225,7 +218,6 @@ impl ErrorRecord {
             version: origin.version.clone(),
             request: None,
             kind: ErrorKind::Critical.as_str().to_owned(),
-            response: None,
             fingerprint: PANIC_FINGERPRINT.to_owned(),
             template: None,
             message: truncate(&message, MAX_MESSAGE_CHARS),
@@ -233,30 +225,6 @@ impl ErrorRecord {
             location: info
                 .location()
                 .map(|l| format!("{}:{}", l.file(), l.line())),
-            backtrace: None,
-        }
-    }
-
-    /// The record for an error that ended a request answered with `status`.
-    /// It carries the error's kind, fingerprint, message and, when the
-    /// error's context is the plain one, where it was constructed; the debug
-    /// cause and backtrace are in the record written at construction.
-    pub fn from_response(error: &dyn ServerErrorTrait, status: u16, origin: &ErrorOrigin) -> Self {
-        Self {
-            v: ERROR_RECORD_VERSION,
-            ts: now_rfc3339(),
-            source: origin.source.clone(),
-            env: origin.env.clone(),
-            entry: origin.entry.clone(),
-            version: origin.version.clone(),
-            request: None,
-            kind: ErrorKind::of(error).as_str().to_owned(),
-            response: Some(status),
-            fingerprint: error.fingerprint().to_owned(),
-            template: None,
-            message: truncate(error.message(), MAX_MESSAGE_CHARS),
-            debug: None,
-            location: plain_context_location(error.context()),
             backtrace: None,
         }
     }
@@ -276,14 +244,6 @@ impl ErrorRecord {
 
 // Helpers.
 // ----------------------------------------------------------------------------
-
-/// `file:line` from a plain context (`file; line;`); `None` for a backtrace
-/// or `OMITTED`.
-fn plain_context_location(context: &str) -> Option<String> {
-    let (file, line) = context.strip_suffix(';')?.split_once("; ")?;
-    line.parse::<u32>().ok()?;
-    Some(format!("{file}:{line}"))
-}
 
 fn truncate(s: &str, max_chars: usize) -> String {
     match s.char_indices().nth(max_chars) {
@@ -456,65 +416,12 @@ mod tests {
     }
 
     #[test]
-    fn a_response_record_names_the_error_that_ended_the_request() {
-        let error = SinkInternal::new("io");
-        let line = line!() - 1;
-        let record = ErrorRecord::from_response(error.as_ref(), 500, &origin());
-        assert_eq!(error.fingerprint(), SinkInternal::FINGERPRINT);
-        assert_eq!(record.fingerprint, SinkInternal::FINGERPRINT);
-        assert_eq!(record.kind, "internal");
-        assert_eq!(record.response, Some(500));
-        assert_eq!(record.message, "Sink failed: io.");
-        assert_eq!(
-            record.location.as_deref(),
-            Some(&*format!("{}:{line}", file!()))
-        );
-        let json = record.to_json_line();
-        assert!(json.contains(r#""response":500"#));
-        assert!(!json.contains(r#""debug""#));
-
-        let sensitive = SinkSensitive::with_debug(&"token=abc");
-        let record = ErrorRecord::from_response(sensitive.as_ref(), 401, &origin());
-        assert_eq!(record.kind, "sensitive");
-        assert_eq!(record.response, Some(401));
-        assert!(!record.to_json_line().contains("token"));
-    }
-
-    #[test]
-    fn construction_records_carry_no_request_or_response() {
+    fn the_request_key_is_written_only_when_set() {
         let seen = seen();
         let _e = SinkUser::new();
-        let json = find(&seen, "::SinkUser").to_json_line();
-        assert!(!json.contains(r#""request""#));
-        assert!(!json.contains(r#""response""#));
-    }
-
-    #[test]
-    fn a_hand_written_error_is_fingerprinted_by_its_type_name() {
-        #[derive(Debug)]
-        struct Manual(String);
-        impl ServerErrorTrait for Manual {
-            fn behaviour(&self) -> ServerErrorBehaviour {
-                ServerErrorBehaviour::ReturnInternalServerError
-            }
-            fn tag(&self) -> ServerErrorTag {
-                ServerErrorTag::None
-            }
-            fn context(&self) -> &String {
-                &self.0
-            }
-            fn message(&self) -> &String {
-                &self.0
-            }
-            fn debug(&self) -> Option<&String> {
-                None
-            }
-        }
-        let error = Manual("OMITTED".into());
-        assert!(error.fingerprint().ends_with("::Manual"));
-        assert_eq!(
-            ErrorRecord::from_response(&error, 500, &origin()).location,
-            None
-        );
+        let mut record = find(&seen, "::SinkUser");
+        assert!(!record.to_json_line().contains(r#""request""#));
+        record.request = Some("req-1".into());
+        assert!(record.to_json_line().contains(r#""request":"req-1""#));
     }
 }

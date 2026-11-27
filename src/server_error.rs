@@ -52,11 +52,6 @@ pub trait ServerErrorTrait: std::fmt::Debug + Send + Sync + 'static {
     fn context(&self) -> &String;
     fn message(&self) -> &String;
     fn debug(&self) -> Option<&String>;
-    /// The grouping key error records carry: `module_path!()::TypeName` for
-    /// the macro-defined errors, the type's name otherwise.
-    fn fingerprint(&self) -> &'static str {
-        std::any::type_name::<Self>()
-    }
 }
 
 pub type ServerError = Box<dyn ServerErrorTrait>;

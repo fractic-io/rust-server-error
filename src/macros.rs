@@ -86,9 +86,6 @@ macro_rules! define_server_error {
             fn debug(&self) -> Option<&String> {
                 self.debug.as_ref()
             }
-            fn fingerprint(&self) -> &'static str {
-                Self::FINGERPRINT
-            }
         }
     };
 }
